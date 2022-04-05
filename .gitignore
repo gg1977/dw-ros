@@ -1,0 +1,9 @@
+build/
+build_isolated/
+build_linux/
+devel/
+devel_isolated/
+install/
+install_isolated/
+
+.catkin_workspace

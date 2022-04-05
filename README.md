@@ -3,6 +3,7 @@
 * [cross compile nv_sensors](https://github.com/nvidia/dw-ros#cross-compile-nv_sensors)
 * [run on the target system](https://github.com/nvidia/dw-ros#run-on-the-target-system)
 
+
 ## install NVIDIA DRIVE™ OS 5.2.0 and DriveWorks 3.5 (Linux)
 follow the download [page](https://developer.nvidia.com/drive/downloads) to install NVIDIA DRIVE™ OS 5.2.0 and DriveWorks 3.5 (Linux). 
 
@@ -160,6 +161,46 @@ start X server
 sudo -b X -ac -noreset -nolisten tcp
 ```
 then verify on image receiving side by subscribing the topic
+```
+rosrun image_view image_view image:=/cameraData _autosize:=True
+```
+
+## compile/install on HOST 
+Make sure you have driveworks and ros installed then run:
+
+Build:
+
+```
+catkin_make
+```
+
+Install:
+```
+cd build
+```
+```
+make install
+```
+
+## run on HOST 
+
+Start 3 terminals, change to dw-ros, source:
+
+```
+source install/bash.setup
+```
+
+1. Start roscore& if needed
+```
+nv_sensors_producer
+```
+
+2. Run
+```
+rosservice call camera_start camera.virtual "video=/usr/local/driveworks/data/samples/recordings/highway0/video_first.h264"
+```
+
+3. Run
 ```
 rosrun image_view image_view image:=/cameraData _autosize:=True
 ```

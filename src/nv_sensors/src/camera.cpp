@@ -17,6 +17,16 @@
 
 using namespace sensor_msgs;
 
+// macro to easily check for dw errors
+#define CHECK_DW_ERROR(x)                                                                                                                                                                                                   \
+    {                                                                                                                                                                                                                       \
+        dwStatus result = x;                                                                                                                                                                                                \
+        if (result != DW_SUCCESS)                                                                                                                                                                                           \
+        {                                                                                                                                                                                                                   \
+            throw std::runtime_error(std::string("DW Error ") + dwGetStatusName(result) + std::string(" executing DW function:\n " #x) + std::string("\n at " __FILE__ ":") + std::to_string(__LINE__)); \
+        }                                                                                                                                                                                                                   \
+    };
+
 namespace nv {
 
   void SensorCamera::initialize(dwContextHandle_t context, dwSALHandle_t hal)
@@ -52,9 +62,9 @@ namespace nv {
 
       return false;
     }
-    imageProperties.format = DW_IMAGE_FORMAT_RGBA_UINT8;
-
+    
     // create an image to hold the conversion from native to rgba, fit for streaming to gl
+    imageProperties.format = DW_IMAGE_FORMAT_RGBA_UINT8;
     status = dwImage_create(&m_rgbaFrame[0], imageProperties, m_sdk);
     if(status != DW_SUCCESS) {
       ROS_ERROR("Error");
@@ -64,17 +74,36 @@ namespace nv {
       return false;
     }
 
-    // setup streamer for frame grabbing
-    status = dwImageStreamer_initialize(&m_streamerNvmediaToCpuProcessed[0], &imageProperties, DW_IMAGE_CPU, m_sdk);
-    if(status != DW_SUCCESS) {
-      ROS_ERROR("Error");
+    //initialize the image transformation and the resized image
+    if (m_shrinkFactor > 1.0f) {
+      dwImageTransformationParameters m_params{false};
+      m_params.ignoreAspectRatio = false;
 
-      dwImage_destroy(m_rgbaFrame[0]);
-      dwSAL_releaseSensor(m_camera[0]);
+      dwImageTransformation_initialize(&m_imageTransformationEngine, m_params, m_sdk);
+      dwImageTransformation_setBorderMode(DW_IMAGEPROCESSING_BORDER_MODE_ZERO, m_imageTransformationEngine);
+      dwImageTransformation_setInterpolationMode(DW_IMAGEPROCESSING_INTERPOLATION_DEFAULT, m_imageTransformationEngine);
 
-      return false;
+      imageProperties.width /= m_shrinkFactor;
+      imageProperties.height /= m_shrinkFactor;
+      imageProperties.format = DW_IMAGE_FORMAT_RGBA_UINT8;
+
+      ROS_INFO("Small image size %d %d", imageProperties.width, imageProperties.height);
+      CHECK_DW_ERROR(dwImage_create(&m_imageResized, imageProperties, m_sdk));
     }
 
+      // setup streamer for frame grabbing
+      status = dwImageStreamer_initialize(&m_streamerNvmediaToCpuProcessed[0], &imageProperties, DW_IMAGE_CPU, m_sdk);
+      if (status != DW_SUCCESS)
+      {
+        ROS_ERROR("Error");
+
+        dwImage_destroy(m_rgbaFrame[0]);
+        dwSAL_releaseSensor(m_camera[0]);
+
+        return false;
+    }
+
+    // start camera
     status = dwSensor_start(m_camera[0]);
     if(status != DW_SUCCESS) {
       ROS_ERROR("Cannot start camera. Error: %s", dwGetStatusName(status));
@@ -154,19 +183,39 @@ namespace nv {
           break;
         }
 
-        // stream that image to the CPU domain
-        status = dwImageStreamer_producerSend(m_rgbaFrame[0], m_streamerNvmediaToCpuProcessed[0]);
-        if(status != DW_SUCCESS) {
-          ROS_ERROR("Error");
-          break;
-        }
-
-        // receive the streamed image as a handle
         dwImageHandle_t cpuFrame;
-        status = dwImageStreamer_consumerReceive(&cpuFrame, 33000, m_streamerNvmediaToCpuProcessed[0]);
-        if(status != DW_SUCCESS) {
-          ROS_ERROR("Error");
-          break;
+        if (m_shrinkFactor > 1.0f) {
+          //resize image and send it to the streamer
+         dwImageTransformation_copyFullImage(m_imageResized, m_rgbaFrame[0], m_imageTransformationEngine);
+         if(status != DW_SUCCESS) {
+            ROS_ERROR("Error image transform");
+            break;
+          }
+          // stream that image to the CPU domain
+          CHECK_DW_ERROR(dwImageStreamer_producerSend(m_imageResized, m_streamerNvmediaToCpuProcessed[0]));
+          
+          // receive the streamed image as a handle
+          status = dwImageStreamer_consumerReceive(&cpuFrame, 33000, m_streamerNvmediaToCpuProcessed[0]);
+          if(status != DW_SUCCESS) {
+            ROS_ERROR("Error");
+            break;
+          }
+        } else {
+          //just send the m_rgbaFrame to the streamer
+    
+          // stream that image to the CPU domain
+          status = dwImageStreamer_producerSend(m_rgbaFrame[0], m_streamerNvmediaToCpuProcessed[0]);
+          if(status != DW_SUCCESS) {
+            ROS_ERROR("Error");
+            break;
+          }
+
+          // receive the streamed image as a handle
+          status = dwImageStreamer_consumerReceive(&cpuFrame, 33000, m_streamerNvmediaToCpuProcessed[0]);
+          if(status != DW_SUCCESS) {
+            ROS_ERROR("Error");
+            break;
+          }
         }
 
         dwImageProperties prop;
@@ -201,6 +250,7 @@ namespace nv {
 
         dwImageStreamer_consumerReturn(&cpuFrame, m_streamerNvmediaToCpuProcessed[0]);
         dwImageStreamer_producerReturn(nullptr, 33000, m_streamerNvmediaToCpuProcessed[0]);
+        
         dwSensorCamera_returnFrame(&frame);
 
         m_cameraPub.publish(image);

@@ -14,6 +14,7 @@
 #include <dw/sensors/Sensors.h>
 #include <dw/sensors/camera/Camera.h>
 #include <dw/interop/streamer/ImageStreamer.h>
+#include <dw/imageprocessing/geometry/imagetransformation/ImageTransformation.h>
 #include <dw/rig/Rig.h>
 
 #include <ros/ros.h>
@@ -114,6 +115,10 @@ namespace nv
       dwImageHandle_t m_rgbaFrame[16] = {DW_NULL_HANDLE};
       // Frame grab variables
       dwImageStreamerHandle_t m_streamerNvmediaToCpuProcessed[16] = {DW_NULL_HANDLE};
+
+      float m_shrinkFactor = 2.0f;
+      dwImageHandle_t m_imageResized = DW_NULL_HANDLE;
+      dwImageTransformationHandle_t m_imageTransformationEngine = DW_NULL_HANDLE;
 
       bool m_cameraRun = false;
 

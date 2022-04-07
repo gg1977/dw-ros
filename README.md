@@ -13,7 +13,7 @@ follow the download [page](https://developer.nvidia.com/drive/downloads) to inst
 installing arm64 Debian dependencies with qemu-chroot
 
 ```
-SYSROOT=~/nvidia/nvidia_sdk/DRIVE_OS_5.2.0_SDK_Linux_OS_DDPX/DRIVEOS/drive-t186ref-linux/targetfs
+SYSROOT=~/nvidia/nvidia_sdk/DRIVE_OS_5.2.0_SDK_Linux_OS_DRIVE_AGX_XAVIER/DRIVEOS/drive-t186ref-linux/targetfs
 cd $SYSROOT
 
 sudo apt install qemu-user-static
@@ -63,11 +63,11 @@ create Toolchain-V5L.cmake in ~/Downloads with below content for cross compilati
 ```
 set(CMAKE_SYSTEM_NAME Linux) 
 # Specify the cross compiler 
-set(TOOLCHAIN "$ENV{HOME}/nvidia/nvidia_sdk/DRIVE_OS_5.2.0_SDK_Linux_OS_DDPX/DRIVEOS/toolchains/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu") 
+set(TOOLCHAIN "$ENV{HOME}/nvidia/nvidia_sdk/DRIVE_OS_5.2.0_SDK_Linux_OS_DRIVE_AGX_XAVIER/DRIVEOS/toolchains/gcc-linaro-7.3.1-2018.05-x86_64_aarch64-linux-gnu")
 set(CMAKE_CXX_COMPILER "${TOOLCHAIN}/bin/aarch64-linux-gnu-g++") 
 set(CMAKE_C_COMPILER "${TOOLCHAIN}/bin/aarch64-linux-gnu-gcc") 
 # Targetfs path 
-set(ROS_SYSROOT "$ENV{HOME}/nvidia/nvidia_sdk/DRIVE_OS_5.2.0_SDK_Linux_OS_DDPX/DRIVEOS/drive-t186ref-linux/targetfs") 
+set(ROS_SYSROOT "$ENV{HOME}/nvidia/nvidia_sdk/DRIVE_OS_5.2.0_SDK_Linux_OS_DRIVE_AGX_XAVIER/DRIVEOS/drive-t186ref-linux/targetfs") 
 # Library paths 
 set(LD_PATH "${ROS_SYSROOT}/usr/lib/aarch64-linux-gnu") 
 set(LD_PATH_EXTRA "${ROS_SYSROOT}/lib/aarch64-linux-gnu") 
@@ -111,7 +111,7 @@ source ~/ros_catkin_ws/install_isolated/setup.bash
 ```
 cross compile nv_sensors and install it to ROS directory copied from target
 ```
-SYSROOT=~/nvidia/nvidia_sdk/DRIVE_OS_5.2.0_SDK_Linux_OS_DDPX/DRIVEOS/drive-t186ref-linux/targetfs
+SYSROOT=~/nvidia/nvidia_sdk/DRIVE_OS_5.2.0_SDK_Linux_OS_DRIVE_AGX_XAVIER/DRIVEOS/drive-t186ref-linux/targetfs
 catkin_make_isolated -DCMAKE_TOOLCHAIN_FILE=$HOME/Downloads/Toolchain-V5L.cmake -DCMAKE_EXE_LINKER_FLAGS="${CMAKE_EXE_LINKER_FLAGS} -L/usr/local/driveworks/targets/aarch64-Linux/lib -Wl,-rpath,/usr/local/driveworks/targets/aarch64-Linux/lib -L$SYSROOT/usr/local/cuda-10.2/targets/aarch64-linux/lib -Wl,-rpath,$SYSROOT/usr/local/cuda-10.2/targets/aarch64-linux/lib" --install
 ```
 replace with the binary installation directory so can run any binary installed packaes on the target. 
